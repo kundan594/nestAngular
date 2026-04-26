@@ -1,0 +1,242 @@
+.admin-users-shell {
+  min-height: 100vh;
+  padding: 1.5rem;
+  color: #f7f4ec;
+  background:
+    radial-gradient(circle at top left, rgba(247, 148, 29, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(73, 158, 255, 0.2), transparent 24%),
+    linear-gradient(180deg, #14181f 0%, #0e1218 100%);
+}
+
+.hero,
+.summary-grid,
+.workspace,
+.notice,
+.error {
+  max-width: 92rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero,
+.panel-head,
+.hero-actions,
+.pager,
+.inline-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hero,
+.panel-head {
+  justify-content: space-between;
+}
+
+.hero {
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ffca7d;
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 0.96;
+}
+
+.lede,
+.panel-copy {
+  margin: 0.35rem 0 0;
+  color: rgba(247, 244, 236, 0.74);
+  line-height: 1.55;
+}
+
+.summary-grid,
+.workspace,
+.stack,
+.table-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.summary-card,
+.panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  background: rgba(15, 21, 30, 0.84);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
+.summary-card {
+  padding: 1.2rem;
+}
+
+.summary-card span,
+.summary-card strong,
+.summary-card small {
+  display: block;
+}
+
+.summary-card strong {
+  margin: 0.3rem 0;
+  font-size: 2rem;
+}
+
+.summary-card.accent {
+  background: linear-gradient(135deg, rgba(255, 149, 76, 0.2), rgba(30, 126, 255, 0.15));
+}
+
+.notice,
+.error {
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+}
+
+.notice {
+  background: rgba(110, 255, 183, 0.12);
+  color: #baf8d2;
+}
+
+.error {
+  background: rgba(255, 108, 108, 0.14);
+  color: #ffc0c0;
+}
+
+.workspace {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.panel-wide {
+  grid-column: 1 / -1;
+}
+
+input,
+button {
+  font: inherit;
+}
+
+input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  padding: 0.82rem 0.95rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.78rem 1rem;
+  font-weight: 700;
+  color: #091018;
+  background: linear-gradient(120deg, #ffd28c, #ff9354);
+  cursor: pointer;
+}
+
+button.ghost {
+  color: #f7f4ec;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+button.danger {
+  color: #fff;
+  background: linear-gradient(120deg, #f5515f, #b22245);
+}
+
+button.small {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.checkbox {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.table-list {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.row {
+  display: grid;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.row.header {
+  color: rgba(247, 244, 236, 0.62);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.user-grid {
+  grid-template-columns: 0.45fr 1fr 1.4fr 0.7fr 1fr;
+}
+
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(247, 244, 236, 0.92);
+}
+
+.role-pill.admin {
+  background: rgba(255, 170, 92, 0.18);
+  color: #ffd79c;
+}
+
+.empty-state {
+  padding: 1rem 0;
+  color: rgba(247, 244, 236, 0.64);
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .row,
+  .user-grid {
+    grid-template-columns: 1fr;
+  }
+}

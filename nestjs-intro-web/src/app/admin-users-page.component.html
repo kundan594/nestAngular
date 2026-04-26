@@ -1,0 +1,125 @@
+<main class="admin-users-shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Admin Panel</p>
+      <h1>User Management</h1>
+      <p class="lede">
+        Review all users and manage access from one place with add, edit, and delete actions.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="ghost" (click)="goBack()">Back to Dashboard</button>
+      <button type="button" (click)="loadUsers()" [disabled]="isLoading()">Reload Users</button>
+    </div>
+  </header>
+
+  <section class="summary-grid">
+    <article class="summary-card accent">
+      <span>Total users</span>
+      <strong>{{ usersResponse()?.meta?.totalItems ?? 0 }}</strong>
+      <small>Full registered user list</small>
+    </article>
+    <article class="summary-card">
+      <span>Current page</span>
+      <strong>{{ usersResponse()?.meta?.currentPage ?? usersPage() }}</strong>
+      <small>25 users per page</small>
+    </article>
+    <article class="summary-card">
+      <span>Editor status</span>
+      <strong>{{ editUserModel.id || 'None' }}</strong>
+      <small>{{ selectedUserLabel() }}</small>
+    </article>
+  </section>
+
+  <div class="notice" *ngIf="notice()">{{ notice() }}</div>
+  <div class="error" *ngIf="error()">{{ error() }}</div>
+
+  <section class="workspace">
+    <article class="panel">
+      <div class="panel-head">
+        <h2>Add User</h2>
+      </div>
+
+      <form class="stack" (ngSubmit)="createUser()">
+        <input type="text" name="createFirstName" [(ngModel)]="createUserModel.firstName" placeholder="First name" required />
+        <input type="text" name="createLastName" [(ngModel)]="createUserModel.lastName" placeholder="Last name" />
+        <input type="email" name="createEmail" [(ngModel)]="createUserModel.email" placeholder="Email" required />
+        <input type="password" name="createPassword" [(ngModel)]="createUserModel.password" placeholder="Password" required />
+        <label class="checkbox">
+          <input type="checkbox" name="createIsAdmin" [(ngModel)]="createUserModel.isAdmin" />
+          <span>Grant admin access</span>
+        </label>
+        <button type="submit" [disabled]="isLoading()">Create User</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Edit User</h2>
+          <p class="panel-copy">{{ selectedUserLabel() }}</p>
+        </div>
+        <button type="button" class="ghost small" (click)="resetEditor()">Clear</button>
+      </div>
+
+      <form class="stack" (ngSubmit)="updateUser()">
+        <input type="number" name="editId" [(ngModel)]="editUserModel.id" placeholder="User ID" required />
+        <input type="text" name="editFirstName" [(ngModel)]="editUserModel.firstName" placeholder="First name" />
+        <input type="text" name="editLastName" [(ngModel)]="editUserModel.lastName" placeholder="Last name" />
+        <input type="email" name="editEmail" [(ngModel)]="editUserModel.email" placeholder="Email" />
+        <input type="password" name="editPassword" [(ngModel)]="editUserModel.password" placeholder="New password (optional)" />
+        <label class="checkbox">
+          <input type="checkbox" name="editIsAdmin" [(ngModel)]="editUserModel.isAdmin" />
+          <span>Admin user</span>
+        </label>
+        <button type="submit" [disabled]="isLoading() || !editUserModel.id">Update User</button>
+      </form>
+    </article>
+
+    <article class="panel panel-wide">
+      <div class="panel-head">
+        <h2>All Users</h2>
+        <div class="pager">
+          <button type="button" class="ghost small" (click)="changePage(-1)" [disabled]="isLoading() || usersPage() === 1">Prev</button>
+          <span>Page {{ usersPage() }}</span>
+          <button
+            type="button"
+            class="ghost small"
+            (click)="changePage(1)"
+            [disabled]="isLoading() || usersPage() >= (usersResponse()?.meta?.totalPages ?? 1)"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      <div class="table-list">
+        <div class="row header user-grid">
+          <span>ID</span>
+          <span>Name</span>
+          <span>Email</span>
+          <span>Role</span>
+          <span>Actions</span>
+        </div>
+
+        <div class="row user-grid" *ngFor="let user of users()">
+          <span>#{{ user.id }}</span>
+          <span>{{ user.firstName }} {{ user.lastName }}</span>
+          <span>{{ user.email }}</span>
+          <span>
+            <span class="role-pill" [class.admin]="user.isAdmin">{{ user.isAdmin ? 'Admin' : 'User' }}</span>
+          </span>
+          <span class="inline-actions">
+            <button type="button" class="small" (click)="editUser(user)">Edit</button>
+            <button type="button" class="small danger" (click)="deleteUser(user)" [disabled]="isLoading()">Delete</button>
+          </span>
+        </div>
+
+        <div class="empty-state" *ngIf="!users().length && !isLoading()">
+          No users found on this page.
+        </div>
+      </div>
+    </article>
+  </section>
+</main>

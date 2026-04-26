@@ -1,0 +1,14 @@
+{
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "nestjs-intro/node_modules/typescript/lib",
+  "eslint.workingDirectories": [
+    {
+      "directory": "nestjs-intro",
+      "changeProcessCWD": true
+    },
+    {
+      "directory": "nestjs-intro-web",
+      "changeProcessCWD": true
+    }
+  ]
+}

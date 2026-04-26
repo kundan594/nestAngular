@@ -1,0 +1,48 @@
+<main class="auth-shell">
+  <section class="hero">
+    <p class="eyebrow">NestJS + Angular Test Bed</p>
+    <h1>Login, create data, and pressure-test the API with a frontend built for the endpoints you already have.</h1>
+    <p class="lede">
+      This UI talks directly to your NestJS app on <code>http://localhost:3000</code>.
+      Seeded admin login is <code>admin@nestjs.local</code> and seeded users use the password <code>LoadTest@123</code>.
+    </p>
+    <div class="status" *ngIf="message()">{{ message() }}</div>
+    <div class="error" *ngIf="error()">{{ error() }}</div>
+  </section>
+
+  <section class="panel-grid">
+    <form class="panel" (ngSubmit)="signIn()">
+      <h2>Sign In</h2>
+      <label>
+        <span>Email</span>
+        <input type="email" name="signinEmail" [(ngModel)]="signInModel.email" required />
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" name="signinPassword" [(ngModel)]="signInModel.password" required />
+      </label>
+      <button type="submit" [disabled]="isBusy()">Enter Dashboard</button>
+    </form>
+
+    <form class="panel" (ngSubmit)="signUp()">
+      <h2>Create User</h2>
+      <label>
+        <span>First name</span>
+        <input type="text" name="firstName" [(ngModel)]="signUpModel.firstName" minlength="3" required />
+      </label>
+      <label>
+        <span>Last name</span>
+        <input type="text" name="lastName" [(ngModel)]="signUpModel.lastName" />
+      </label>
+      <label>
+        <span>Email</span>
+        <input type="email" name="signupEmail" [(ngModel)]="signUpModel.email" required />
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" name="signupPassword" [(ngModel)]="signUpModel.password" required />
+      </label>
+      <button type="submit" [disabled]="isBusy()">Register User</button>
+    </form>
+  </section>
+</main>

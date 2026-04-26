@@ -1,0 +1,311 @@
+<main class="dashboard-shell">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">{{ isAdmin() ? 'Admin Portal' : 'User Portal' }}</p>
+      <h1>{{ isAdmin() ? 'Admin control room' : 'My content portal' }}</h1>
+      <p class="lede">
+        Signed in as <strong>{{ authUser()?.email }}</strong>.
+        This page shows heavy listings with 50 items per panel, plus personal post accordions for edit and delete actions.
+      </p>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="ghost" *ngIf="isAdmin()" (click)="openUserManagement()">
+        Manage Users
+      </button>
+      <button type="button" (click)="reloadAll()" [disabled]="isLoading()">Reload</button>
+      <button type="button" (click)="refreshTokens()" [disabled]="isLoading()">Refresh Token</button>
+      <button type="button" class="ghost" (click)="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <section class="summary-grid">
+    <article class="summary-card accent">
+      <span>Portal mode</span>
+      <strong>{{ isAdmin() ? 'ADMIN' : 'USER' }}</strong>
+      <small>{{ totalVisibleRecords() }} rows rendered across panels</small>
+    </article>
+    <article class="summary-card">
+      <span>My posts</span>
+      <strong>{{ myPostsResponse()?.meta?.totalItems ?? 0 }}</strong>
+      <small>Paginated personal content</small>
+    </article>
+    <article class="summary-card">
+      <span>My tags</span>
+      <strong>{{ myTagCards().length }}</strong>
+      <small>Unique tags across my posts</small>
+    </article>
+    <article class="summary-card" *ngIf="isAdmin()">
+      <span>Total users</span>
+      <strong>{{ usersResponse()?.meta?.totalItems ?? 0 }}</strong>
+      <small>Full admin listing</small>
+    </article>
+  </section>
+
+  <div class="notice" *ngIf="notice()">{{ notice() }}</div>
+  <div class="error" *ngIf="error()">{{ error() }}</div>
+
+  <section class="grid">
+    <article class="panel">
+      <div class="panel-head">
+        <h2>My Profile</h2>
+      </div>
+      <form class="stack" (ngSubmit)="updateMyProfile()">
+        <input type="text" name="profileFirstName" [(ngModel)]="profileModel.firstName" placeholder="First name" required />
+        <input type="text" name="profileLastName" [(ngModel)]="profileModel.lastName" placeholder="Last name" />
+        <input type="email" name="profileEmail" [(ngModel)]="profileModel.email" placeholder="Email" required />
+        <input type="password" name="profilePassword" [(ngModel)]="profileModel.password" placeholder="New password (optional)" />
+        <button type="submit" [disabled]="isLoading()">Update My Profile</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <h2>Create Post</h2>
+      </div>
+      <form class="stack" (ngSubmit)="createPost()">
+        <input type="text" name="postTitle" [(ngModel)]="createPostModel.title" placeholder="Title" required />
+        <input type="text" name="postSlug" [(ngModel)]="createPostModel.slug" placeholder="post-slug" required />
+        <div class="pair">
+          <select name="postType" [(ngModel)]="createPostModel.postType">
+            <option value="post">post</option>
+            <option value="page">page</option>
+            <option value="story">story</option>
+            <option value="series">series</option>
+          </select>
+          <select name="postStatus" [(ngModel)]="createPostModel.status">
+            <option value="draft">draft</option>
+            <option value="review">review</option>
+            <option value="scheduled">scheduled</option>
+            <option value="published">published</option>
+          </select>
+        </div>
+        <textarea name="postContent" [(ngModel)]="createPostModel.content" rows="5" placeholder="Content"></textarea>
+        <input type="url" name="postImage" [(ngModel)]="createPostModel.featuredImageUrl" placeholder="Featured image URL" />
+        <input type="datetime-local" name="postPublishOn" [(ngModel)]="createPostModel.publishOn" />
+        <input type="text" name="postTags" [(ngModel)]="createPostModel.tagsCsv" placeholder="Tag IDs, e.g. 1,2,3" />
+        <textarea name="postSchema" [(ngModel)]="createPostModel.schema" rows="3" placeholder="Post schema JSON"></textarea>
+        <textarea name="metaValue" [(ngModel)]="createPostModel.metaValue" rows="3" placeholder="Meta option JSON"></textarea>
+        <button type="submit" [disabled]="isLoading()">Create Post</button>
+      </form>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <h2>Edit Post</h2>
+      </div>
+      <form class="stack" (ngSubmit)="updatePost()">
+        <input type="number" name="updatePostId" [(ngModel)]="updatePostModel.id" placeholder="Post ID" required />
+        <input type="text" name="updatePostTitle" [(ngModel)]="updatePostModel.title" placeholder="Title" />
+        <input type="text" name="updatePostSlug" [(ngModel)]="updatePostModel.slug" placeholder="post-slug" />
+        <div class="pair">
+          <select name="updatePostType" [(ngModel)]="updatePostModel.postType">
+            <option value="post">post</option>
+            <option value="page">page</option>
+            <option value="story">story</option>
+            <option value="series">series</option>
+          </select>
+          <select name="updatePostStatus" [(ngModel)]="updatePostModel.status">
+            <option value="draft">draft</option>
+            <option value="review">review</option>
+            <option value="scheduled">scheduled</option>
+            <option value="published">published</option>
+          </select>
+        </div>
+        <textarea name="updatePostContent" [(ngModel)]="updatePostModel.content" rows="5" placeholder="Content"></textarea>
+        <input type="url" name="updatePostImage" [(ngModel)]="updatePostModel.featuredImageUrl" placeholder="Featured image URL" />
+        <input type="datetime-local" name="updatePostPublishOn" [(ngModel)]="updatePostModel.publishOn" />
+        <input type="text" name="updatePostTags" [(ngModel)]="updatePostModel.tagsCsv" placeholder="Tag IDs, e.g. 1,2,3" />
+        <button type="submit" [disabled]="isLoading()">Update Post</button>
+      </form>
+    </article>
+
+    <article class="panel panel-wide">
+      <div class="panel-head">
+        <h2>My Posts Accordion</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('my-posts', -1)">Prev</button>
+          <span>Page {{ myPostsPage() }}</span>
+          <button type="button" (click)="changePage('my-posts', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="accordion-list">
+        <details *ngFor="let post of myPostsResponse()?.data ?? []" class="accordion-item">
+          <summary>
+            <span class="summary-title">{{ post.title }}</span>
+            <span class="summary-meta">
+              #{{ post.id }} | {{ post.status }} | {{ post.postType }}
+            </span>
+          </summary>
+          <div class="accordion-body">
+            <p><strong>Slug:</strong> {{ post.slug }}</p>
+            <p><strong>Publish on:</strong> {{ post.publishOn || 'Not scheduled' }}</p>
+            <p><strong>Tags:</strong> {{ (post.tags ?? []).map((tag) => tag.name).join(', ') || 'None' }}</p>
+            <p class="body-copy">{{ post.content || 'No content' }}</p>
+            <div class="inline-actions">
+              <button type="button" class="small" (click)="loadPost(post)">Edit This Post</button>
+              <button type="button" class="small danger" (click)="deletePost(post.id)">Delete This Post</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <h2>My Tags</h2>
+      </div>
+      <div class="chip-list">
+        <span class="chip" *ngFor="let tag of myTagCards()">
+          #{{ tag.id }} {{ tag.name }}
+        </span>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <h2>Uploads</h2>
+      </div>
+      <label class="upload-zone">
+        <input type="file" (change)="uploadFile($event)" />
+        <span>Select a file to send to <code>POST /uploads/file</code></span>
+      </label>
+      <pre *ngIf="uploadResult()">{{ uploadResult() }}</pre>
+    </article>
+
+    <article class="panel panel-wide" *ngIf="isAdmin()">
+      <div class="panel-head">
+        <h2>Admin Users</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('users', -1)">Prev</button>
+          <span>Page {{ usersPage() }}</span>
+          <button type="button" (click)="changePage('users', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <form class="stack" (ngSubmit)="createUser()">
+          <h3>Create User</h3>
+          <input type="text" name="firstName" [(ngModel)]="createUserModel.firstName" placeholder="First name" required />
+          <input type="text" name="lastName" [(ngModel)]="createUserModel.lastName" placeholder="Last name" />
+          <input type="email" name="userEmail" [(ngModel)]="createUserModel.email" placeholder="Email" required />
+          <input type="password" name="userPassword" [(ngModel)]="createUserModel.password" placeholder="Password" required />
+          <label class="checkbox">
+            <input type="checkbox" name="createUserIsAdmin" [(ngModel)]="createUserModel.isAdmin" />
+            <span>Admin user</span>
+          </label>
+          <button type="submit" [disabled]="isLoading()">Create User</button>
+        </form>
+
+        <form class="stack" (ngSubmit)="updateUser()">
+          <h3>Edit User</h3>
+          <input type="number" name="editUserId" [(ngModel)]="editUserModel.id" placeholder="User ID" required />
+          <input type="text" name="editFirstName" [(ngModel)]="editUserModel.firstName" placeholder="First name" />
+          <input type="text" name="editLastName" [(ngModel)]="editUserModel.lastName" placeholder="Last name" />
+          <input type="email" name="editEmail" [(ngModel)]="editUserModel.email" placeholder="Email" />
+          <input type="password" name="editPassword" [(ngModel)]="editUserModel.password" placeholder="New password (optional)" />
+          <label class="checkbox">
+            <input type="checkbox" name="editUserIsAdmin" [(ngModel)]="editUserModel.isAdmin" />
+            <span>Admin user</span>
+          </label>
+          <button type="submit" [disabled]="isLoading()">Update User</button>
+        </form>
+      </div>
+
+      <div class="table-list">
+        <div class="row header user-grid">
+          <span>ID</span>
+          <span>Name</span>
+          <span>Email</span>
+          <span>Role</span>
+          <span>Actions</span>
+        </div>
+        <div class="row user-grid" *ngFor="let user of usersResponse()?.data ?? []">
+          <span>#{{ user.id }}</span>
+          <span>{{ user.firstName }} {{ user.lastName }}</span>
+          <span>{{ user.email }}</span>
+          <span>{{ user.isAdmin ? 'admin' : 'user' }}</span>
+          <span class="inline-actions">
+            <button type="button" class="small" (click)="loadUser(user)">Load</button>
+            <button type="button" class="small danger" (click)="deleteUser(user.id)">Delete</button>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel panel-wide" *ngIf="isAdmin()">
+      <div class="panel-head">
+        <h2>Admin Posts Heavy Listing</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('posts', -1)">Prev</button>
+          <span>Page {{ postsPage() }}</span>
+          <button type="button" (click)="changePage('posts', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="table-list">
+        <div class="row header post-grid">
+          <span>ID</span>
+          <span>Title</span>
+          <span>Author</span>
+          <span>Status</span>
+          <span>Tags</span>
+          <span>Actions</span>
+        </div>
+        <div class="row post-grid" *ngFor="let post of postsResponse()?.data ?? []">
+          <span>#{{ post.id }}</span>
+          <span>{{ post.title }}</span>
+          <span>{{ post.author.email || ('User #' + post.author.id) }}</span>
+          <span>{{ post.status }}</span>
+          <span>{{ (post.tags ?? []).map((tag) => tag.name).join(', ') || 'None' }}</span>
+          <span class="inline-actions">
+            <button type="button" class="small" (click)="loadPost(post)">Edit</button>
+            <button type="button" class="small danger" (click)="deletePost(post.id)">Delete</button>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel panel-wide" *ngIf="isAdmin()">
+      <div class="panel-head">
+        <h2>Admin Tags</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('tags', -1)">Prev</button>
+          <span>Page {{ tagsPage() }}</span>
+          <button type="button" (click)="changePage('tags', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <form class="stack" (ngSubmit)="createTag()">
+          <h3>Create Tag</h3>
+          <input type="text" name="tagName" [(ngModel)]="createTagModel.name" placeholder="Tag name" required />
+          <input type="text" name="tagSlug" [(ngModel)]="createTagModel.slug" placeholder="tag-slug" required />
+          <input type="text" name="tagDescription" [(ngModel)]="createTagModel.description" placeholder="Description" />
+          <input type="url" name="tagImage" [(ngModel)]="createTagModel.featuredImage" placeholder="Featured image URL" />
+          <textarea name="tagSchema" [(ngModel)]="createTagModel.schema" rows="3" placeholder="JSON schema"></textarea>
+          <button type="submit" [disabled]="isLoading()">Create Tag</button>
+        </form>
+      </div>
+
+      <div class="table-list">
+        <div class="row header tag-grid">
+          <span>ID</span>
+          <span>Name</span>
+          <span>Slug</span>
+          <span>Actions</span>
+        </div>
+        <div class="row tag-grid" *ngFor="let tag of tagsResponse()?.data ?? []">
+          <span>#{{ tag.id }}</span>
+          <span>{{ tag.name }}</span>
+          <span>{{ tag.slug }}</span>
+          <span class="inline-actions">
+            <button type="button" class="small danger" (click)="deleteTag(tag.id)">Delete</button>
+            <button type="button" class="small ghost" (click)="deleteTag(tag.id, true)">Soft Delete</button>
+          </span>
+        </div>
+      </div>
+    </article>
+  </section>
+</main>
