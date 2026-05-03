@@ -1,2 +1,34 @@
-## Get Request For App controller
-GET http://localhost:3000/
+@baseUrl = http://localhost:3000
+@adminEmail = admin@nestjs.local
+@userEmail = user@nestjs.local
+@password = LoadTest@123
+
+## Home
+GET {{baseUrl}}/
+
+## Sign in as admin
+POST {{baseUrl}}/auth/sign-in
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}"
+}
+
+## Sign in as member
+POST {{baseUrl}}/auth/sign-in
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{password}}"
+}
+
+## Public featured posts
+GET {{baseUrl}}/posts?limit=10&page=1&featured=true
+
+## Public comments for post 1
+GET {{baseUrl}}/comments?postId=1&limit=20&page=1
+
+## Public tags
+GET {{baseUrl}}/tags?limit=20&page=1

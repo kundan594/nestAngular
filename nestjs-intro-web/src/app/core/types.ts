@@ -60,9 +60,34 @@ export interface BlogPost {
   schema?: string | null;
   featuredImageUrl?: string | null;
   publishOn?: string | null;
+  allowComments?: boolean;
+  featured?: boolean;
   author: PostAuthor;
   tags?: Tag[];
   metaOptions?: PostMetaOption | null;
+}
+
+export interface CommentAuthor {
+  id: number;
+  email?: string;
+  firstName?: string;
+  lastName?: string | null;
+}
+
+export interface CommentPostRef {
+  id: number;
+  title?: string;
+  slug?: string;
+}
+
+export interface CommentItem {
+  id: number;
+  content: string;
+  isAnonymous: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  author?: CommentAuthor;
+  post: CommentPostRef;
 }
 
 export interface CreateUserPayload {
@@ -90,6 +115,10 @@ export interface CreateTagPayload {
   featuredImage?: string;
 }
 
+export interface UpdateTagPayload extends Partial<CreateTagPayload> {
+  id: number;
+}
+
 export interface CreatePostPayload {
   title: string;
   postType: string;
@@ -106,6 +135,26 @@ export interface CreatePostPayload {
 }
 
 export interface UpdatePostPayload extends Partial<CreatePostPayload> {
+  id: number;
+}
+
+export interface PostQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  tagId?: number | null;
+  status?: string;
+  postType?: string;
+  featured?: boolean | null;
+}
+
+export interface CreateCommentPayload {
+  postId: number;
+  content: string;
+  isAnonymous?: boolean;
+}
+
+export interface UpdateCommentPayload extends Partial<CreateCommentPayload> {
   id: number;
 }
 

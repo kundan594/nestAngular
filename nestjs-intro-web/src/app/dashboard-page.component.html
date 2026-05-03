@@ -5,7 +5,7 @@
       <h1>{{ isAdmin() ? 'Admin control room' : 'My content portal' }}</h1>
       <p class="lede">
         Signed in as <strong>{{ authUser()?.email }}</strong>.
-        This page shows heavy listings with 50 items per panel, plus personal post accordions for edit and delete actions.
+        This page now covers heavy listings, public browsing, comments, user CRUD, tag maintenance, and post ownership flows.
       </p>
     </div>
 
@@ -31,9 +31,14 @@
       <small>Paginated personal content</small>
     </article>
     <article class="summary-card">
-      <span>My tags</span>
-      <strong>{{ myTagCards().length }}</strong>
-      <small>Unique tags across my posts</small>
+      <span>Public posts</span>
+      <strong>{{ publicPostsResponse()?.meta?.totalItems ?? 0 }}</strong>
+      <small>Anonymous-compatible feed</small>
+    </article>
+    <article class="summary-card">
+      <span>Comments loaded</span>
+      <strong>{{ commentsResponse()?.meta?.totalItems ?? 0 }}</strong>
+      <small>For post #{{ selectedCommentPostId() }}</small>
     </article>
     <article class="summary-card" *ngIf="isAdmin()">
       <span>Total users</span>
@@ -122,6 +127,112 @@
 
     <article class="panel panel-wide">
       <div class="panel-head">
+        <h2>Public Browse Feed</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('public-posts', -1)">Prev</button>
+          <span>Page {{ publicPostsPage() }}</span>
+          <button type="button" (click)="changePage('public-posts', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <form class="stack" (ngSubmit)="reloadAll()">
+          <h3>Browse Filters</h3>
+          <input type="text" name="publicSearch" [(ngModel)]="postFilterModel.search" placeholder="Search published posts" />
+          <select name="publicPostType" [(ngModel)]="postFilterModel.postType">
+            <option value="">all post types</option>
+            <option value="post">post</option>
+            <option value="page">page</option>
+            <option value="story">story</option>
+            <option value="series">series</option>
+          </select>
+          <label class="checkbox">
+            <input type="checkbox" name="featuredOnly" [(ngModel)]="postFilterModel.featuredOnly" />
+            <span>Featured only</span>
+          </label>
+          <button type="submit" [disabled]="isLoading()">Apply Filters</button>
+        </form>
+      </div>
+
+      <div class="accordion-list">
+        <details *ngFor="let post of publicPostsResponse()?.data ?? []" class="accordion-item">
+          <summary>
+            <span class="summary-title">{{ post.title }}</span>
+            <span class="summary-meta">
+              #{{ post.id }} | {{ post.status }} | {{ post.postType }}
+            </span>
+          </summary>
+          <div class="accordion-body">
+            <p><strong>Slug:</strong> {{ post.slug }}</p>
+            <p><strong>Author:</strong> {{ post.author.email || ('User #' + post.author.id) }}</p>
+            <p><strong>Tags:</strong> {{ (post.tags ?? []).map((tag) => tag.name).join(', ') || 'None' }}</p>
+            <p><strong>Comments enabled:</strong> {{ post.allowComments ? 'Yes' : 'No' }}</p>
+            <p class="body-copy">{{ post.content || 'No content' }}</p>
+            <div class="inline-actions">
+              <button type="button" class="small" (click)="focusComments(post.id)">Load Comments</button>
+              <button type="button" class="small" (click)="loadPost(post)" *ngIf="isAdmin() || post.author.id === authUser()?.sub">Edit</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </article>
+
+    <article class="panel panel-wide">
+      <div class="panel-head">
+        <h2>Comments For Post #{{ selectedCommentPostId() }}</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('comments', -1)">Prev</button>
+          <span>Page {{ commentsPage() }}</span>
+          <button type="button" (click)="changePage('comments', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="split">
+        <form class="stack" (ngSubmit)="createComment()">
+          <h3>Create Comment</h3>
+          <input type="number" name="createCommentPostId" [(ngModel)]="createCommentModel.postId" placeholder="Post ID" required />
+          <textarea name="createCommentContent" [(ngModel)]="createCommentModel.content" rows="4" placeholder="Write your comment" required></textarea>
+          <label class="checkbox">
+            <input type="checkbox" name="createCommentAnonymous" [(ngModel)]="createCommentModel.isAnonymous" />
+            <span>Anonymous in public feed</span>
+          </label>
+          <button type="submit" [disabled]="isLoading()">Create Comment</button>
+        </form>
+
+        <form class="stack" (ngSubmit)="updateComment()">
+          <h3>Edit Comment</h3>
+          <input type="number" name="updateCommentId" [(ngModel)]="updateCommentModel.id" placeholder="Comment ID" required />
+          <input type="number" name="updateCommentPostId" [(ngModel)]="updateCommentModel.postId" placeholder="Post ID" required />
+          <textarea name="updateCommentContent" [(ngModel)]="updateCommentModel.content" rows="4" placeholder="Updated comment"></textarea>
+          <label class="checkbox">
+            <input type="checkbox" name="updateCommentAnonymous" [(ngModel)]="updateCommentModel.isAnonymous" />
+            <span>Anonymous in public feed</span>
+          </label>
+          <button type="submit" [disabled]="isLoading()">Update Comment</button>
+        </form>
+      </div>
+
+      <div class="table-list">
+        <div class="row header comment-grid">
+          <span>ID</span>
+          <span>Author</span>
+          <span>Comment</span>
+          <span>Actions</span>
+        </div>
+        <div class="row comment-grid" *ngFor="let comment of commentsResponse()?.data ?? []">
+          <span>#{{ comment.id }}</span>
+          <span>{{ comment.author?.email || 'Anonymous reader' }}</span>
+          <span>{{ comment.content }}</span>
+          <span class="inline-actions">
+            <button type="button" class="small" (click)="loadComment(comment)">Load</button>
+            <button type="button" class="small danger" (click)="deleteComment(comment.id)">Delete</button>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel panel-wide">
+      <div class="panel-head">
         <h2>My Posts Accordion</h2>
         <div class="pager">
           <button type="button" (click)="changePage('my-posts', -1)">Prev</button>
@@ -142,9 +253,11 @@
             <p><strong>Slug:</strong> {{ post.slug }}</p>
             <p><strong>Publish on:</strong> {{ post.publishOn || 'Not scheduled' }}</p>
             <p><strong>Tags:</strong> {{ (post.tags ?? []).map((tag) => tag.name).join(', ') || 'None' }}</p>
+            <p><strong>Comments enabled:</strong> {{ post.allowComments ? 'Yes' : 'No' }}</p>
             <p class="body-copy">{{ post.content || 'No content' }}</p>
             <div class="inline-actions">
               <button type="button" class="small" (click)="loadPost(post)">Edit This Post</button>
+              <button type="button" class="small" (click)="focusComments(post.id)">Comments</button>
               <button type="button" class="small danger" (click)="deletePost(post.id)">Delete This Post</button>
             </div>
           </div>
@@ -261,6 +374,7 @@
           <span>{{ (post.tags ?? []).map((tag) => tag.name).join(', ') || 'None' }}</span>
           <span class="inline-actions">
             <button type="button" class="small" (click)="loadPost(post)">Edit</button>
+            <button type="button" class="small" (click)="focusComments(post.id)">Comments</button>
             <button type="button" class="small danger" (click)="deletePost(post.id)">Delete</button>
           </span>
         </div>
@@ -287,6 +401,17 @@
           <textarea name="tagSchema" [(ngModel)]="createTagModel.schema" rows="3" placeholder="JSON schema"></textarea>
           <button type="submit" [disabled]="isLoading()">Create Tag</button>
         </form>
+
+        <form class="stack" (ngSubmit)="updateTag()">
+          <h3>Edit Tag</h3>
+          <input type="number" name="editTagId" [(ngModel)]="editTagModel.id" placeholder="Tag ID" required />
+          <input type="text" name="editTagName" [(ngModel)]="editTagModel.name" placeholder="Tag name" />
+          <input type="text" name="editTagSlug" [(ngModel)]="editTagModel.slug" placeholder="tag-slug" />
+          <input type="text" name="editTagDescription" [(ngModel)]="editTagModel.description" placeholder="Description" />
+          <input type="url" name="editTagImage" [(ngModel)]="editTagModel.featuredImage" placeholder="Featured image URL" />
+          <textarea name="editTagSchema" [(ngModel)]="editTagModel.schema" rows="3" placeholder="JSON schema"></textarea>
+          <button type="submit" [disabled]="isLoading()">Update Tag</button>
+        </form>
       </div>
 
       <div class="table-list">
@@ -301,8 +426,39 @@
           <span>{{ tag.name }}</span>
           <span>{{ tag.slug }}</span>
           <span class="inline-actions">
+            <button type="button" class="small" (click)="loadTag(tag)">Load</button>
             <button type="button" class="small danger" (click)="deleteTag(tag.id)">Delete</button>
             <button type="button" class="small ghost" (click)="deleteTag(tag.id, true)">Soft Delete</button>
+            <button type="button" class="small" *ngIf="tag.deletedAt" (click)="restoreTag(tag.id)">Restore</button>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel panel-wide" *ngIf="isAdmin()">
+      <div class="panel-head">
+        <h2>Admin Comments</h2>
+        <div class="pager">
+          <button type="button" (click)="changePage('admin-comments', -1)">Prev</button>
+          <span>Page {{ adminCommentsPage() }}</span>
+          <button type="button" (click)="changePage('admin-comments', 1)">Next</button>
+        </div>
+      </div>
+
+      <div class="table-list">
+        <div class="row header comment-grid">
+          <span>ID</span>
+          <span>Author</span>
+          <span>Comment</span>
+          <span>Actions</span>
+        </div>
+        <div class="row comment-grid" *ngFor="let comment of adminCommentsResponse()?.data ?? []">
+          <span>#{{ comment.id }}</span>
+          <span>{{ comment.author?.email || 'Anonymous reader' }}</span>
+          <span>{{ comment.content }}</span>
+          <span class="inline-actions">
+            <button type="button" class="small" (click)="loadComment(comment)">Load</button>
+            <button type="button" class="small danger" (click)="deleteComment(comment.id)">Delete</button>
           </span>
         </div>
       </div>

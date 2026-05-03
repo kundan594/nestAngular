@@ -4,8 +4,12 @@
     <h1>Login, create data, and pressure-test the API with a frontend built for the endpoints you already have.</h1>
     <p class="lede">
       This UI talks directly to your NestJS app on <code>http://localhost:3000</code>.
-      Seeded admin login is <code>admin@nestjs.local</code> and seeded users use the password <code>LoadTest@123</code>.
+      Seeded admin login is <code>admin@nestjs.local</code> and seeded member login is <code>user@nestjs.local</code>, both with <code>LoadTest@123</code>.
     </p>
+    <div class="credential-row">
+      <button type="button" class="ghost" (click)="fillAdminLogin()">Use Admin Login</button>
+      <button type="button" class="ghost" (click)="fillMemberLogin()">Use Member Login</button>
+    </div>
     <div class="status" *ngIf="message()">{{ message() }}</div>
     <div class="error" *ngIf="error()">{{ error() }}</div>
   </section>
@@ -44,5 +48,31 @@
       </label>
       <button type="submit" [disabled]="isBusy()">Register User</button>
     </form>
+  </section>
+
+  <section class="public-grid">
+    <article class="panel">
+      <h2>Anonymous Published Feed</h2>
+      <p class="caption">This section loads without signing in, so you can test public read traffic too.</p>
+      <div class="feed-list">
+        <article class="feed-item" *ngFor="let post of publicPosts()">
+          <strong>{{ post.title }}</strong>
+          <span>{{ post.slug }} · {{ post.status }}</span>
+          <p>{{ post.content || 'No preview content.' }}</p>
+        </article>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Recent Public Comments</h2>
+      <p class="caption">Comments for post <code>#1</code> are loaded anonymously here.</p>
+      <div class="feed-list">
+        <article class="feed-item" *ngFor="let comment of publicComments()">
+          <strong>{{ comment.author?.email || 'Anonymous reader' }}</strong>
+          <span>Post #{{ comment.post.id }}</span>
+          <p>{{ comment.content }}</p>
+        </article>
+      </div>
+    </article>
   </section>
 </main>

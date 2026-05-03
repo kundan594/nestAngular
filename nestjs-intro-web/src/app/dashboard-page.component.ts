@@ -6,7 +6,13 @@ import { firstValueFrom } from 'rxjs';
 import { AuthApiService } from './core/auth-api.service';
 import { AuthStateService } from './core/auth-state.service';
 import { BlogApiService } from './core/blog-api.service';
-import { BlogPost, PaginatedResponse, Tag, User } from './core/types';
+import {
+  BlogPost,
+  CommentItem,
+  PaginatedResponse,
+  Tag,
+  User,
+} from './core/types';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -29,11 +35,20 @@ export class DashboardPageComponent implements OnInit {
   readonly postsPage = signal(1);
   readonly tagsPage = signal(1);
   readonly myPostsPage = signal(1);
+  readonly publicPostsPage = signal(1);
+  readonly commentsPage = signal(1);
+  readonly adminCommentsPage = signal(1);
+  readonly selectedCommentPostId = signal(1);
 
   readonly usersResponse = signal<PaginatedResponse<User> | null>(null);
   readonly postsResponse = signal<PaginatedResponse<BlogPost> | null>(null);
   readonly tagsResponse = signal<PaginatedResponse<Tag> | null>(null);
   readonly myPostsResponse = signal<PaginatedResponse<BlogPost> | null>(null);
+  readonly publicPostsResponse = signal<PaginatedResponse<BlogPost> | null>(null);
+  readonly commentsResponse = signal<PaginatedResponse<CommentItem> | null>(null);
+  readonly adminCommentsResponse = signal<PaginatedResponse<CommentItem> | null>(
+    null,
+  );
   readonly currentProfile = signal<User | null>(null);
   readonly uploadResult = signal('');
 
@@ -56,6 +71,9 @@ export class DashboardPageComponent implements OnInit {
       this.postsResponse()?.data.length ?? 0,
       this.tagsResponse()?.data.length ?? 0,
       this.myPostsResponse()?.data.length ?? 0,
+      this.publicPostsResponse()?.data.length ?? 0,
+      this.commentsResponse()?.data.length ?? 0,
+      this.adminCommentsResponse()?.data.length ?? 0,
     ];
 
     return counts.reduce((sum, current) => sum + current, 0);
@@ -86,11 +104,20 @@ export class DashboardPageComponent implements OnInit {
     featuredImage: 'https://picsum.photos/640/360',
   };
 
+  readonly editTagModel = {
+    id: 0,
+    name: '',
+    slug: '',
+    description: '',
+    schema: '',
+    featuredImage: '',
+  };
+
   readonly createPostModel = {
     title: '',
     postType: 'post',
     slug: '',
-    status: 'draft',
+    status: 'published',
     content: '',
     schema: '{"@context":"https://schema.org","@type":"BlogPosting"}',
     featuredImageUrl: 'https://picsum.photos/1280/720',
@@ -104,7 +131,7 @@ export class DashboardPageComponent implements OnInit {
     title: '',
     postType: 'post',
     slug: '',
-    status: 'draft',
+    status: 'published',
     content: '',
     featuredImageUrl: '',
     publishOn: '',
@@ -117,6 +144,25 @@ export class DashboardPageComponent implements OnInit {
     lastName: '',
     email: '',
     password: '',
+  };
+
+  readonly postFilterModel = {
+    search: '',
+    postType: '',
+    featuredOnly: false,
+  };
+
+  readonly createCommentModel = {
+    postId: 1,
+    content: '',
+    isAnonymous: false,
+  };
+
+  readonly updateCommentModel = {
+    id: 0,
+    postId: 1,
+    content: '',
+    isAnonymous: false,
   };
 
   ngOnInit() {
@@ -137,7 +183,23 @@ export class DashboardPageComponent implements OnInit {
     try {
       const requests = [
         firstValueFrom(this.blogApi.getCurrentUserProfile()),
-        firstValueFrom(this.blogApi.listPosts(this.myPostsPage(), this.heavyPageSize, authUser.sub)),
+        firstValueFrom(
+          this.blogApi.listPosts(this.myPostsPage(), this.heavyPageSize, authUser.sub),
+        ),
+        firstValueFrom(
+          this.blogApi.listPosts(this.publicPostsPage(), 12, null, {
+            search: this.postFilterModel.search || undefined,
+            postType: this.postFilterModel.postType || undefined,
+            featured: this.postFilterModel.featuredOnly ? true : null,
+          }),
+        ),
+        firstValueFrom(
+          this.blogApi.listComments(
+            this.commentsPage(),
+            20,
+            this.selectedCommentPostId(),
+          ),
+        ),
       ] as const;
 
       const adminRequests = this.isAdmin()
@@ -145,13 +207,14 @@ export class DashboardPageComponent implements OnInit {
             firstValueFrom(this.blogApi.listUsers(this.usersPage(), this.heavyPageSize)),
             firstValueFrom(this.blogApi.listPosts(this.postsPage(), this.heavyPageSize)),
             firstValueFrom(this.blogApi.listTags(this.tagsPage(), this.heavyPageSize)),
+            firstValueFrom(
+              this.blogApi.listComments(this.adminCommentsPage(), this.heavyPageSize),
+            ),
           ] as const)
         : ([] as const);
 
-      const [profile, myPosts, ...adminResults] = await Promise.all([
-        ...requests,
-        ...adminRequests,
-      ]);
+      const [profile, myPosts, publicPosts, comments, ...adminResults] =
+        await Promise.all([...requests, ...adminRequests]);
 
       this.currentProfile.set(profile);
       this.profileModel.id = profile.id;
@@ -160,21 +223,26 @@ export class DashboardPageComponent implements OnInit {
       this.profileModel.email = profile.email;
       this.profileModel.password = '';
       this.myPostsResponse.set(myPosts);
+      this.publicPostsResponse.set(publicPosts);
+      this.commentsResponse.set(comments);
 
       if (this.isAdmin()) {
-        const [users, posts, tags] = adminResults as [
+        const [users, posts, tags, adminComments] = adminResults as [
           PaginatedResponse<User>,
           PaginatedResponse<BlogPost>,
           PaginatedResponse<Tag>,
+          PaginatedResponse<CommentItem>,
         ];
 
         this.usersResponse.set(users);
         this.postsResponse.set(posts);
         this.tagsResponse.set(tags);
+        this.adminCommentsResponse.set(adminComments);
       } else {
         this.usersResponse.set(null);
         this.postsResponse.set(null);
         this.tagsResponse.set(null);
+        this.adminCommentsResponse.set(null);
       }
 
       this.notice.set('Portal refreshed with heavy listing data.');
@@ -186,7 +254,14 @@ export class DashboardPageComponent implements OnInit {
   }
 
   async changePage(
-    section: 'users' | 'posts' | 'tags' | 'my-posts',
+    section:
+      | 'users'
+      | 'posts'
+      | 'tags'
+      | 'my-posts'
+      | 'public-posts'
+      | 'comments'
+      | 'admin-comments',
     direction: number,
   ) {
     if (section === 'users') {
@@ -203,6 +278,18 @@ export class DashboardPageComponent implements OnInit {
 
     if (section === 'my-posts') {
       this.myPostsPage.update((page) => Math.max(1, page + direction));
+    }
+
+    if (section === 'public-posts') {
+      this.publicPostsPage.update((page) => Math.max(1, page + direction));
+    }
+
+    if (section === 'comments') {
+      this.commentsPage.update((page) => Math.max(1, page + direction));
+    }
+
+    if (section === 'admin-comments') {
+      this.adminCommentsPage.update((page) => Math.max(1, page + direction));
     }
 
     await this.reloadAll();
@@ -302,6 +389,24 @@ export class DashboardPageComponent implements OnInit {
     });
   }
 
+  loadTag(tag: Tag) {
+    this.editTagModel.id = tag.id;
+    this.editTagModel.name = tag.name;
+    this.editTagModel.slug = tag.slug;
+    this.editTagModel.description = tag.description || '';
+    this.editTagModel.schema = tag.schema || '';
+    this.editTagModel.featuredImage = tag.featuredImage || '';
+    this.notice.set(`Loaded tag ${tag.id} into the editor.`);
+  }
+
+  async updateTag() {
+    await this.runMutation(async () => {
+      await firstValueFrom(this.blogApi.updateTag(this.editTagModel));
+      this.notice.set(`Tag ${this.editTagModel.id} updated successfully.`);
+      await this.reloadAll();
+    });
+  }
+
   async deleteTag(id: number, softDelete = false) {
     await this.runMutation(async () => {
       if (softDelete) {
@@ -316,8 +421,18 @@ export class DashboardPageComponent implements OnInit {
     });
   }
 
+  async restoreTag(id: number) {
+    await this.runMutation(async () => {
+      await firstValueFrom(this.blogApi.restoreTag(id));
+      this.notice.set(`Tag ${id} restored.`);
+      await this.reloadAll();
+    });
+  }
+
   async createPost() {
     await this.runMutation(async () => {
+      const createdStatus = this.createPostModel.status;
+
       await firstValueFrom(
         this.blogApi.createPost({
           title: this.createPostModel.title,
@@ -334,7 +449,17 @@ export class DashboardPageComponent implements OnInit {
             : null,
         }),
       );
-      this.notice.set('Post created successfully.');
+      this.myPostsPage.set(1);
+
+      if (createdStatus === 'published') {
+        this.publicPostsPage.set(1);
+      }
+
+      this.notice.set(
+        createdStatus === 'published'
+          ? 'Post created successfully and should appear in your portal lists.'
+          : 'Post created successfully. Draft or review posts appear in My Posts, not the public feed.',
+      );
       this.resetPostForm();
       await this.reloadAll();
     });
@@ -385,6 +510,62 @@ export class DashboardPageComponent implements OnInit {
     });
   }
 
+  focusComments(postId: number) {
+    this.selectedCommentPostId.set(postId);
+    this.createCommentModel.postId = postId;
+    this.updateCommentModel.postId = postId;
+    this.commentsPage.set(1);
+    void this.reloadAll();
+  }
+
+  async createComment() {
+    await this.runMutation(async () => {
+      await firstValueFrom(
+        this.blogApi.createComment({
+          postId: this.createCommentModel.postId,
+          content: this.createCommentModel.content,
+          isAnonymous: this.createCommentModel.isAnonymous,
+        }),
+      );
+      this.notice.set('Comment created successfully.');
+      this.createCommentModel.content = '';
+      await this.reloadAll();
+    });
+  }
+
+  loadComment(comment: CommentItem) {
+    this.updateCommentModel.id = comment.id;
+    this.updateCommentModel.postId = comment.post.id;
+    this.updateCommentModel.content = comment.content;
+    this.updateCommentModel.isAnonymous = comment.isAnonymous;
+    this.notice.set(`Loaded comment ${comment.id} into the editor.`);
+  }
+
+  async updateComment() {
+    await this.runMutation(async () => {
+      await firstValueFrom(
+        this.blogApi.updateComment({
+          id: this.updateCommentModel.id,
+          postId: this.updateCommentModel.postId,
+          content: this.updateCommentModel.content,
+          isAnonymous: this.updateCommentModel.isAnonymous,
+        }),
+      );
+      this.notice.set(
+        `Comment ${this.updateCommentModel.id} updated successfully.`,
+      );
+      await this.reloadAll();
+    });
+  }
+
+  async deleteComment(id: number) {
+    await this.runMutation(async () => {
+      await firstValueFrom(this.blogApi.deleteComment(id));
+      this.notice.set(`Comment ${id} deleted.`);
+      await this.reloadAll();
+    });
+  }
+
   async uploadFile(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -431,6 +612,7 @@ export class DashboardPageComponent implements OnInit {
   private resetPostForm() {
     this.createPostModel.title = '';
     this.createPostModel.slug = '';
+    this.createPostModel.status = 'published';
     this.createPostModel.content = '';
     this.createPostModel.tagsCsv = '';
     this.createPostModel.publishOn = '';

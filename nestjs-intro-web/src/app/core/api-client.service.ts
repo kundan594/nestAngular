@@ -15,7 +15,7 @@ export class ApiClientService {
   }
 
   private buildParams(
-    params?: Record<string, string | number | null | undefined>,
+    params?: Record<string, string | number | boolean | null | undefined>,
   ) {
     let httpParams = new HttpParams();
 
@@ -32,7 +32,7 @@ export class ApiClientService {
 
   get<T>(
     endpoint: string,
-    params?: Record<string, string | number | null | undefined>,
+    params?: Record<string, string | number | boolean | null | undefined>,
   ) {
     return this.http
       .get<ApiEnvelope<T>>(this.buildUrl(endpoint), {
@@ -55,7 +55,7 @@ export class ApiClientService {
 
   delete<T>(
     endpoint: string,
-    params?: Record<string, string | number | null | undefined>,
+    params?: Record<string, string | number | boolean | null | undefined>,
   ) {
     return this.http
       .delete<ApiEnvelope<T>>(this.buildUrl(endpoint), {

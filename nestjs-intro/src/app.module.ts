@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AuthenticationGuard } from './auth/guards/authentication/authentication.guard';
+import { CommentsModule } from './comments/comments.module';
 import { DataResponseInterceptor } from './common/interceptors/data-response/data-response.interceptor';
 import { JwtModule } from '@nestjs/jwt';
 import { MetaOptionsModule } from './meta-options/meta-options.module';
@@ -60,6 +61,7 @@ const ENV = process.env.NODE_ENV;
     ConfigModule.forFeature(jwtConfig),
     JwtModule.registerAsync(jwtConfig.asProvider()),
     TagsModule,
+    CommentsModule,
     MetaOptionsModule,
     PaginationModule,
     UploadsModule,

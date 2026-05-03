@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
+import { Comment } from 'src/comments/comment.entity';
 import { MetaOption } from 'src/meta-options/meta-option.entity';
 import { Post } from 'src/posts/post.entity';
 import { postStatus } from 'src/posts/enums/postStatus.enum';
@@ -22,6 +23,7 @@ type SeedOptions = {
   tags: number;
   uploads: number;
   users: number;
+  comments: number;
 };
 
 const DEFAULTS: SeedOptions = {
@@ -31,6 +33,7 @@ const DEFAULTS: SeedOptions = {
   tags: 2500,
   uploads: 20000,
   users: 50000,
+  comments: 250000,
 };
 
 function parseArgs(argv: string[]): SeedOptions {
@@ -117,7 +120,7 @@ function createDataSource() {
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
     synchronize: process.env.DATABASE_SYNC === 'true',
-    entities: [User, Post, Tag, MetaOption, Upload],
+    entities: [User, Post, Tag, MetaOption, Upload, Comment],
   });
 }
 
@@ -141,7 +144,7 @@ function buildMetaValue(index: number) {
 
 async function truncateTables(dataSource: DataSource) {
   await dataSource.query(
-    'TRUNCATE TABLE "post_tags_tag", "meta_option", "post", "tag", "upload", "user" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "comment", "post_tags_tag", "meta_option", "post", "tag", "upload", "user" RESTART IDENTITY CASCADE',
   );
 }
 
@@ -149,17 +152,23 @@ async function ensureSafeSeedTarget(
   dataSource: DataSource,
   options: SeedOptions,
 ) {
-  const [userCount, tagCount, postCount, uploadCount, metaCount] =
+  const [userCount, tagCount, postCount, uploadCount, metaCount, commentCount] =
     await Promise.all([
       dataSource.getRepository(User).count(),
       dataSource.getRepository(Tag).count(),
       dataSource.getRepository(Post).count(),
       dataSource.getRepository(Upload).count(),
       dataSource.getRepository(MetaOption).count(),
+      dataSource.getRepository(Comment).count(),
     ]);
 
   const hasExistingData =
-    userCount > 0 || tagCount > 0 || postCount > 0 || uploadCount > 0 || metaCount > 0;
+    userCount > 0 ||
+    tagCount > 0 ||
+    postCount > 0 ||
+    uploadCount > 0 ||
+    metaCount > 0 ||
+    commentCount > 0;
 
   if (hasExistingData && !options.reset) {
     throw new Error(
@@ -198,11 +207,18 @@ async function seedUsers(dataSource: DataSource, options: SeedOptions) {
     const size = Math.min(options.batch, options.users - offset);
     const rows = range(offset + 1, size).map((userNumber) => ({
       firstName: userNumber === 1 ? 'Admin' : faker.person.firstName(),
-      lastName: userNumber === 1 ? 'User' : faker.person.lastName(),
+      lastName:
+        userNumber === 1
+          ? 'User'
+          : userNumber === 2
+            ? 'Member'
+            : faker.person.lastName(),
       email:
         userNumber === 1
           ? 'admin@nestjs.local'
-          : `load.user.${String(userNumber).padStart(6, '0')}@example.com`,
+          : userNumber === 2
+            ? 'user@nestjs.local'
+            : `load.user.${String(userNumber).padStart(6, '0')}@example.com`,
       password: hashedPassword,
       isAdmin: userNumber === 1,
     }));
@@ -254,6 +270,8 @@ async function seedPosts(dataSource: DataSource, options: SeedOptions) {
       featuredImageUrl: `https://picsum.photos/seed/post-${postNumber}/1280/720`,
       publishOn: new Date(Date.now() - postNumber * 60_000),
       authorId: ((postNumber - 1) % options.users) + 1,
+      allowComments: postNumber % 17 !== 0,
+      featured: postNumber % 25 === 0,
     }));
 
     const insertedPosts = await postRepository.insert(postRows as any[]);
@@ -289,6 +307,25 @@ async function seedPosts(dataSource: DataSource, options: SeedOptions) {
   }
 }
 
+async function seedComments(dataSource: DataSource, options: SeedOptions) {
+  const commentRepository = dataSource.getRepository(Comment);
+
+  for (let offset = 0; offset < options.comments; offset += options.batch) {
+    const size = Math.min(options.batch, options.comments - offset);
+    const rows = range(offset + 1, size).map((commentNumber) => ({
+      content: faker.lorem.sentences({ min: 1, max: 3 }),
+      isAnonymous: commentNumber % 7 === 0,
+      postId: ((commentNumber - 1) % options.posts) + 1,
+      authorId: ((commentNumber - 1) % options.users) + 1,
+    }));
+
+    await commentRepository.insert(rows as any[]);
+    console.log(
+      `Inserted comments: ${Math.min(offset + size, options.comments)}/${options.comments}`,
+    );
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const envFile = resolveEnvFile(options.envFile);
@@ -318,6 +355,7 @@ async function main() {
     await seedUsers(dataSource, options);
     await seedUploads(dataSource, options);
     await seedPosts(dataSource, options);
+    await seedComments(dataSource, options);
 
     console.log('Load test data generation complete');
     console.log(`Users: ${options.users}`);
@@ -326,7 +364,9 @@ async function main() {
     console.log(`Posts: ${options.posts}`);
     console.log(`Meta options: ${options.posts}`);
     console.log(`Post/tag relations: ${options.posts * 2}`);
+    console.log(`Comments: ${options.comments}`);
     console.log('Admin login: admin@nestjs.local / LoadTest@123');
+    console.log('Member login: user@nestjs.local / LoadTest@123');
     console.log('Default login password for seeded users: LoadTest@123');
   } finally {
     await dataSource.destroy();

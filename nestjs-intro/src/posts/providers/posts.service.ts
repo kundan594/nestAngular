@@ -5,7 +5,7 @@ import {
   RequestTimeoutException,
 } from '@nestjs/common';
 import { CreatePostDto } from '../dtos/create-post.dto';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Post } from '../post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MetaOption } from 'src/meta-options/meta-option.entity';
@@ -16,6 +16,7 @@ import { PaginationProvider } from 'src/common/pagination/providers/pagination.p
 import { Paginated } from 'src/common/pagination/interfaces/paginated.interface';
 import { ActiveUserData } from 'src/auth/interfaces/active-user-data.interface';
 import { CreatePostProvider } from './create-post.provider';
+import { postStatus } from '../enums/postStatus.enum';
 
 @Injectable()
 export class PostsService {
@@ -54,6 +55,7 @@ export class PostsService {
   public async findAll(
     postQuery: GetPostsDto,
     userId: string,
+    viewer?: ActiveUserData,
   ): Promise<Paginated<Post>> {
     const queryBuilder = this.postsRepository
       .createQueryBuilder('post')
@@ -64,6 +66,75 @@ export class PostsService {
 
     if (userId) {
       queryBuilder.where('author.id = :userId', { userId: Number(userId) });
+    }
+
+    if (postQuery.search) {
+      queryBuilder.andWhere(
+        '(LOWER(post.title) LIKE :search OR LOWER(COALESCE(post.content, \'\')) LIKE :search)',
+        {
+          search: `%${postQuery.search.toLowerCase()}%`,
+        },
+      );
+    }
+
+    if (postQuery.tagId) {
+      queryBuilder.andWhere('tag.id = :tagId', { tagId: postQuery.tagId });
+    }
+
+    if (postQuery.postType) {
+      queryBuilder.andWhere('post.postType = :postType', {
+        postType: postQuery.postType,
+      });
+    }
+
+    if (postQuery.featured !== undefined) {
+      queryBuilder.andWhere('post.featured = :featured', {
+        featured: postQuery.featured,
+      });
+    }
+
+    if (postQuery.startDate) {
+      queryBuilder.andWhere('post.publishOn >= :startDate', {
+        startDate: postQuery.startDate,
+      });
+    }
+
+    if (postQuery.endDate) {
+      queryBuilder.andWhere('post.publishOn <= :endDate', {
+        endDate: postQuery.endDate,
+      });
+    }
+
+    if (viewer?.isAdmin) {
+      if (postQuery.status) {
+        queryBuilder.andWhere('post.status = :status', {
+          status: postQuery.status,
+        });
+      }
+    } else if (viewer?.sub) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('post.status = :publishedStatus', {
+            publishedStatus: 'published',
+          }).orWhere('author.id = :viewerId', {
+            viewerId: viewer.sub,
+          });
+        }),
+      );
+
+      if (postQuery.status === postStatus.PUBLISHED) {
+        queryBuilder.andWhere('post.status = :status', {
+          status: postQuery.status,
+        });
+      } else if (postQuery.status && Number(userId) === viewer.sub) {
+        queryBuilder.andWhere('post.status = :status', {
+          status: postQuery.status,
+        });
+      }
+    } else {
+      queryBuilder.andWhere('post.status = :status', {
+        status: postStatus.PUBLISHED,
+      });
     }
 
     return this.paginationProvider.paginateQueryBuilder(

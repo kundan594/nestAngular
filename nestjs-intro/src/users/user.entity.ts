@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Exclude } from 'class-transformer';
+import { Comment } from 'src/comments/comment.entity';
 import { Post } from 'src/posts/post.entity';
 
 @Entity()
@@ -56,4 +57,7 @@ export class User {
 
   @OneToMany(() => Post, (post) => post.author)
   posts?: Post[];
+
+  @OneToMany(() => Comment, (comment) => comment.author)
+  comments?: Comment[];
 }

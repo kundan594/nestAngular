@@ -16,6 +16,8 @@ import { PatchPostDto } from './dtos/patch-post.dto';
 import { GetPostsDto } from './dtos/get-post.dto';
 import { ActiveUser } from 'src/auth/decorators/active-user.decorator';
 import { ActiveUserData } from 'src/auth/interfaces/active-user-data.interface';
+import { Auth } from 'src/auth/decorators/auth.decorator';
+import { AuthType } from 'src/auth/enums/auth-type.enum';
 
 @Controller('posts')
 @ApiTags('Posts')
@@ -31,11 +33,13 @@ export class PostsController {
    * GET localhost:3000/posts/:userId
    */
   @Get('/:userId?')
+  @Auth(AuthType.Bearer, AuthType.None)
   public getPosts(
     @Param('userId') userId: string,
     @Query() postQuery: GetPostsDto,
+    @ActiveUser() user?: ActiveUserData,
   ) {
-    return this.postsService.findAll(postQuery, userId);
+    return this.postsService.findAll(postQuery, userId, user);
   }
 
   @ApiOperation({

@@ -78,7 +78,12 @@ export class UsersService {
     getUserParamDto: GetUsersParamDto,
     limit: number,
     page: number,
+    activeUser: ActiveUserData,
   ) {
+    if (!activeUser?.isAdmin) {
+      throw new ForbiddenException('Only administrators can browse users');
+    }
+
     if (getUserParamDto.id) {
       return this.findOneById(getUserParamDto.id);
     }
